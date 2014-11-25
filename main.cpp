@@ -130,10 +130,13 @@ int main(){
 		gamma[i] = g[i];
 		rhs[i] = b[i];
 	}
+	blaze::DynamicVector<double> tmp_cpu(g.size());
 	blaze::DynamicVector<double> res_cpu(g.size());
 	double start_cpu = omp_get_wtime();
-	res_cpu = M_invD*gamma;
-	res_cpu = D_T*res_cpu;
+	for(size_t i = 0; i < 100; i++){
+		tmp_cpu = M_invD*gamma;
+		res_cpu += D_T*tmp_cpu;
+	}
 	double end_cpu = omp_get_wtime();
 
 	
@@ -145,14 +148,23 @@ int main(){
 	vex::copy(b,b_gpu);
 	vex::vector<double> tmp_gpu(ctx,g.size());
 	vex::vector<double> res_gpu(ctx,g.size());
+
+
+	tmp_gpu += _M_invD*gamma_gpu;
+	tmp_gpu = 0;
+	res_gpu += _D_T*tmp_gpu;
+	res_gpu = 0;
 	prof.tic_cpu("GPU");
 	double start_gpu = omp_get_wtime();
-	tmp_gpu  = _M_invD*gamma_gpu;
-	res_gpu  = _D_T*tmp_gpu;
+	for(size_t i = 0; i < 100; i++){
+		tmp_gpu  = _M_invD*gamma_gpu;
+		res_gpu  += _D_T*tmp_gpu;
+	}
+	ctx.finish();
 	double end_gpu = omp_get_wtime();
 	double tot_time = prof.toc("GPU");
-	printf("CPU took %f sec. time.\n", end_cpu-start_cpu);
-	printf("GPU took %f sec. time, %f sec time.\n", end_gpu-start_gpu, tot_time);
+	printf("CPU took %f sec. time.\n", (end_cpu-start_cpu)/100.0);
+	printf("GPU took %f sec. time, %f sec time.\n", (end_gpu-start_gpu)/100.0, tot_time/100.0);
 	printf("Speedup: %f\n", (end_cpu-start_cpu) /(end_gpu-start_gpu));
 
 	//std::vector<double> res_host(g.size());

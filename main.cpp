@@ -45,7 +45,7 @@ void readSPMAT(std::string & data, blaze::CompressedMatrix<double> & mat){
 
 	uint rows, cols, nonzeros;
 	ss>>rows>>cols>>nonzeros;
-	printf("INFO: rows: %d, columns: %d, non zeros: %d\n",rows, cols, nonzeros);
+	//printf("INFO: rows: %d, columns: %d, non zeros: %d\n",rows, cols, nonzeros);
 	mat.resize(rows,cols);
 	mat.reserve(nonzeros);
 	uint row_nonzeros;
@@ -53,7 +53,7 @@ void readSPMAT(std::string & data, blaze::CompressedMatrix<double> & mat){
 	double v;
 
 	for(int i=0; i<rows; i++){
-		if(i%1000000==0){printf("%d\n",i);}
+		if(i%1000000==0){printf("%d, ",i);}
 		
 		ss>>row_nonzeros;
 
@@ -63,6 +63,7 @@ void readSPMAT(std::string & data, blaze::CompressedMatrix<double> & mat){
 		}
 		mat.finalize(i);
 	}
+	printf("\n");
 }
 void readVector(std::string & data, std::vector<double> & vec){
 	std::stringstream ss(data);
@@ -71,7 +72,7 @@ void readVector(std::string & data, std::vector<double> & vec){
 	ss>>size;
 	vec.resize(size);
 
-	printf("INFO: size: %d\n",size);
+	//printf("INFO: size: %d\n",size);
 	double v;
 	for(int i=0; i<size; i++){
 		ss>>v;
@@ -110,7 +111,6 @@ int main(){
 
 	printf("D_T: rows: %d, columns: %d, non zeros: %d\n", D_T.rows(), D_T.columns(), D_T.nonZeros());
 	printf("M_invD: rows: %d, columns: %d, non zeros: %d\n", M_invD.rows(), M_invD.columns(), M_invD.nonZeros());
-
 	printf("gamma: size: %d\n", g.size());
 	printf("b: size: %d\n", b.size());
 
@@ -136,7 +136,7 @@ int main(){
 	res_cpu = D_T*res_cpu;
 	double end_cpu = omp_get_wtime();
 
-	printf("CPU took %f sec. time.\n", end_cpu-start_cpu);
+	
 
 
 	vex::vector<double> gamma_gpu(ctx,g.size());
@@ -151,12 +151,19 @@ int main(){
 	res_gpu  = _D_T*tmp_gpu;
 	double end_gpu = omp_get_wtime();
 
+	
+
+	//std::vector<double> res_host(g.size());
+
+	//vex::copy(res_gpu,res_host);
+
+
+	printf("CPU took %f sec. time.\n", end_cpu-start_cpu);
 	printf("GPU took %f sec. time.\n", end_gpu-start_gpu);
+	printf("Speedup: %f\n", (end_cpu-start_cpu) /(end_gpu-start_gpu));
 
-	std::vector<double> res_host(g.size());
 
-	vex::copy(res_gpu,res_host);
-	printf("copy\n");
+	//printf("copy\n");
 	// for(int i=0; i<g.size(); i++){
 	// 	if(res_host[i]!=res_cpu[i]){
 	// 		printf("%f\n",res_host[i]-res_cpu[i]);

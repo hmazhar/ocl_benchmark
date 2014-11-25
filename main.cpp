@@ -80,7 +80,7 @@ void readVector(std::string & data, std::vector<double> & vec){
 	}
 }
 int main(int argc, char* argv[]){
-	printf("start execution \n");
+	vex::profiler<> prof;
 	vex::Context ctx(vex::Filter::Env && vex::Filter::DoublePrecision);
 	std::cout<<ctx<<std::endl;
 	printf("create context \n");
@@ -132,7 +132,8 @@ int main(int argc, char* argv[]){
 	}
 	blaze::DynamicVector<double> tmp_cpu(g.size());
 	blaze::DynamicVector<double> res_cpu(g.size());
-	double start_cpu = omp_get_wtime();
+
+	prof.tic_cpu("CPU");
 
 
 	double RUNS = 1;
@@ -143,10 +144,9 @@ int main(int argc, char* argv[]){
 		tmp_cpu = M_invD*gamma;
 		res_cpu += D_T*tmp_cpu;
 	}
-	double end_cpu = omp_get_wtime();
-
+double cpu_time = prof.toc("CPU");
 	
-	vex::profiler<> prof;
+	
 
 	vex::vector<double> gamma_gpu(ctx,g.size());
 	vex::vector<double> b_gpu(ctx,b.size());
@@ -168,10 +168,20 @@ int main(int argc, char* argv[]){
 	}
 	ctx.finish();
 	double end_gpu = omp_get_wtime();
-	double tot_time = prof.toc("GPU");
-	printf("CPU took %f sec. time.\n", (end_cpu-start_cpu)/RUNS);
-	printf("GPU took %f sec. time, %f sec time.\n", (end_gpu-start_gpu)/RUNS, tot_time/RUNS);
-	printf("Speedup: %f\n", (end_cpu-start_cpu) /(end_gpu-start_gpu));
+	double gpu_time = prof.toc("GPU");
+	//Two Spmv each with 2*nnz operations
+	uint operations = 2 * 2 * D_T.nonZeros();
+	uint moved = 2* (D_T.nonZeros() + 2* D_T.rows()) * sizeof(double);
+
+	double cpu_single = cpu_time/RUNS;
+	double gpu_single = gpu_time/RUNS;
+	double GFLOP = 1000000000;
+	printf("CPU %f sec. GPU %f sec.\n", cpu_single,gpu_single);
+	printf("Speedup: %f\n", cpu_single /gpu_single);
+	printf("Flops: CPU: %f GPU: %f\n", operations/cpu_single/GFLOP,operations/gpu_single/GFLOP);
+	printf("Bandwidth: CPU: %f GPU: %f\n", moved/cpu_single/GFLOP, moved /gpu_single/GFLOP);
+
+
 
 	//std::vector<double> res_host(g.size());
 

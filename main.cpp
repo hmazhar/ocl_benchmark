@@ -137,7 +137,7 @@ int main(){
 	double end_cpu = omp_get_wtime();
 
 	
-
+	vex::profiler<> prof;
 
 	vex::vector<double> gamma_gpu(ctx,g.size());
 	vex::vector<double> b_gpu(ctx,b.size());
@@ -145,22 +145,22 @@ int main(){
 	vex::copy(b,b_gpu);
 	vex::vector<double> tmp_gpu(ctx,g.size());
 	vex::vector<double> res_gpu(ctx,g.size());
-
+	prof.tic_cpu("GPU");
 	double start_gpu = omp_get_wtime();
 	tmp_gpu  = _M_invD*gamma_gpu;
 	res_gpu  = _D_T*tmp_gpu;
 	double end_gpu = omp_get_wtime();
-
-	
+	double tot_time = prof.toc("GPU");
+	printf("CPU took %f sec. time.\n", end_cpu-start_cpu);
+	printf("GPU took %f sec. time, %f sec time.\n", end_gpu-start_gpu, tot_time);
+	printf("Speedup: %f\n", (end_cpu-start_cpu) /(end_gpu-start_gpu));
 
 	//std::vector<double> res_host(g.size());
 
 	//vex::copy(res_gpu,res_host);
 
 
-	printf("CPU took %f sec. time.\n", end_cpu-start_cpu);
-	printf("GPU took %f sec. time.\n", end_gpu-start_gpu);
-	printf("Speedup: %f\n", (end_cpu-start_cpu) /(end_gpu-start_gpu));
+
 
 
 	//printf("copy\n");

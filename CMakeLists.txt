@@ -37,6 +37,13 @@ ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 ENDIF()
 
 # ------------------------------------------------------------------------------
+# Eigen -- required for some parallel solvers
+# ------------------------------------------------------------------------------
+
+find_package(Eigen3 REQUIRED)
+include_directories( ${EIGEN3_INCLUDE_DIR} )
+
+# ------------------------------------------------------------------------------
 # BOOST -- required for BLAZE
 # ------------------------------------------------------------------------------
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")

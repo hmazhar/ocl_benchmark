@@ -10,6 +10,9 @@
 #include <blaze/math/serialization/MatrixSerializer.h>
 #include <blaze/math/serialization/VectorSerializer.h>
 
+#include <Eigen/Sparse>
+
+
 #include <vector>
 #include <sstream>
 #include <string>
@@ -30,6 +33,18 @@ void ConvertSpMat(std::vector<size_t>& row, std::vector<size_t>& col, std::vecto
 		}
 	}
 	row.push_back(count);
+}
+
+void ConvertSpMat(std::vector<Eigen::Triplet<double> > & triplet, blaze::CompressedMatrix<double>& mat) {
+	uint non_zeros = mat.nonZeros();
+	triplet.clear();
+	triplet.reserve(non_zeros);
+
+	for (int i = 0; i < mat.rows(); ++i) {
+		for (blaze::CompressedMatrix<double>::Iterator it = mat.begin(i); it != mat.end(i); ++it) {
+			triplet.push_back(Eigen::Triplet<double>(i,it->index(),it->value()));
+		}
+	}
 }
 
 
@@ -173,14 +188,52 @@ double cpu_time = prof.toc("CPU");
 	uint operations = 2 * 2 * D_T.nonZeros();
 	uint moved = 2* (D_T.nonZeros() + 2* D_T.rows()) * sizeof(double);
 
+
+
+
+
+	std::vector<Eigen::Triplet<double> >  triplet;
+
+	ConvertSpMat(triplet, D_T);
+	Eigen::SparseMatrix<double> eigen_D_T(D_T.rows(),D_T.columns());
+	eigen_D_T.setFromTriplets(triplet.begin(), triplet.end());
+
+
+ConvertSpMat(triplet, M_invD);
+	Eigen::SparseMatrix<double> eigen_M_invD(M_invD.rows(),M_invD.columns());
+	eigen_M_invD.setFromTriplets(triplet.begin(), triplet.end());
+
+Eigen::VectorXd eigen_gamma(g.size());
+Eigen::VectorXd eigen_rhs(g.size());
+
+Eigen::VectorXd tmp_eigen(g.size());
+Eigen::VectorXd res_eigen(g.size());
+
+for(int i=0; i<g.size(); i++){
+		eigen_gamma[i] = g[i];
+		eigen_rhs[i] = b[i];
+	}
+
+prof.tic_cpu("EIGEN"); 
+for(size_t i = 0; i < RUNS; i++){
+	tmp_eigen = eigen_M_invD*eigen_gamma;
+	res_eigen += eigen_D_T*tmp_eigen;
+}
+double eigen_time = prof.toc("EIGEN");
+
+
+
 	double cpu_single = cpu_time/RUNS;
 	double gpu_single = gpu_time/RUNS;
+	double eig_single = eigen_time/RUNS;
 	double GFLOP = 1000000000;
-	printf("CPU %f sec. GPU %f sec.\n", cpu_single,gpu_single);
-	printf("Speedup: %f\n", cpu_single /gpu_single);
-	printf("Flops: CPU: %f GPU: %f\n", operations/cpu_single/GFLOP,operations/gpu_single/GFLOP);
-	printf("Bandwidth: CPU: %f GPU: %f\n", moved/cpu_single/GFLOP, moved /gpu_single/GFLOP);
+	printf("Blaze %f sec. Eigen %f sec. OCL %f sec.\n", cpu_single, eig_single, gpu_single);
+	printf("Speedup: Blaze vs Eigen %f\n", cpu_single /eig_single);
+	printf("Speedup: Blaze vs OCL %f\n", cpu_single /gpu_single);
+	printf("Speedup: Eigen vs OCL %f\n", eig_single /gpu_single);
 
+	printf("Flops: Blaze: %f Eigen %f OCL: %f\n", operations/cpu_single/GFLOP,operations/eig_single/GFLOP,operations/gpu_single/GFLOP);
+	printf("Bandwidth: Blaze: %f Eigen %f OCL: %f\n", moved/cpu_single/GFLOP,moved/eig_single/GFLOP, moved /gpu_single/GFLOP);
 
 
 	//std::vector<double> res_host(g.size());

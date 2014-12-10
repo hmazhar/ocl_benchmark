@@ -194,6 +194,10 @@ int main(int argc, char* argv[]) {
   printf("gamma: size: %d\n", gamma_blaze.size());
   printf("b: size: %d\n", rhs_blaze.size());
 
+  Blaze_TEST();
+  Eigen_TEST();
+  VexCL_TEST();
+
   // Two Spmv each with 2*nnz operations
   uint operations = 2 * 2 * num_nonzeros;
   uint moved = 2 * (num_nonzeros + 2 * num_rows) * sizeof(double);

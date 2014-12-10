@@ -18,7 +18,6 @@
 #include <iostream>
 
 void ConvertSpMat(std::vector<size_t>& row, std::vector<size_t>& col, std::vector<double>& val, blaze::CompressedMatrix<double>& mat) {
-  uint non_zeros = mat.nonZeros();
   row.clear();
   col.clear();
   val.clear();
@@ -35,9 +34,8 @@ void ConvertSpMat(std::vector<size_t>& row, std::vector<size_t>& col, std::vecto
 }
 
 void ConvertSpMat(std::vector<Eigen::Triplet<double> >& triplet, blaze::CompressedMatrix<double>& mat) {
-  uint non_zeros = mat.nonZeros();
   triplet.clear();
-  triplet.reserve(non_zeros);
+  triplet.reserve(mat.nonZeros());
 
   for (int i = 0; i < mat.rows(); ++i) {
     for (blaze::CompressedMatrix<double>::Iterator it = mat.begin(i); it != mat.end(i); ++it) {
@@ -91,7 +89,7 @@ blaze::DynamicVector<double> gamma_blaze, rhs_blaze;
 int num_rows;
 int num_cols;
 int num_nonzeros;
-int RUNS = 1;
+int RUNS = 100;
 
 vex::profiler<> prof;
 
@@ -114,6 +112,8 @@ void Blaze_TEST() {
   prof.tic_cpu("Blaze");
   TEST(D_T_blaze, M_invD_blaze, gamma_blaze, temporary, result);
   blaze_time = prof.toc("Blaze");
+
+  std::cout << blaze_time << std::endl;
 }
 
 void VexCL_TEST() {
@@ -149,19 +149,20 @@ void VexCL_TEST() {
   TEST(D_T_vex, M_invD_vex, gamma_vex, temporary, result);
   ctx.finish();
   vexcl_time = prof.toc("VexCL");
+  std::cout << vexcl_time << std::endl;
 }
 
 void Eigen_TEST() {
 
-  std::vector<Eigen::Triplet<double> > triplet;
-
-  ConvertSpMat(triplet, D_T_blaze);
+  Eigen::SparseMatrix<double> M_invD_eigen(num_cols, num_rows);
   Eigen::SparseMatrix<double> D_T_eigen(num_rows, num_cols);
-  D_T_eigen.setFromTriplets(triplet.begin(), triplet.end());
 
-  ConvertSpMat(triplet, M_invD_blaze);
-  Eigen::SparseMatrix<double> M_invD_eigen(num_rows, num_cols);
-  M_invD_eigen.setFromTriplets(triplet.begin(), triplet.end());
+    std::vector<Eigen::Triplet<double> > triplet;
+    ConvertSpMat(triplet, D_T_blaze);
+    D_T_eigen.setFromTriplets(triplet.begin(), triplet.end());
+
+    ConvertSpMat(triplet, M_invD_blaze);
+    M_invD_eigen.setFromTriplets(triplet.begin(), triplet.end());
 
   Eigen::VectorXd gamma_eigen(num_rows);
   Eigen::VectorXd temporary(num_rows);
@@ -170,9 +171,12 @@ void Eigen_TEST() {
   for (int i = 0; i < num_rows; i++) {
     gamma_eigen[i] = gamma_blaze[i];
   }
+  printf("start eigen\n");
+
   prof.tic_cpu("EIGEN");
   TEST(D_T_eigen, M_invD_eigen, gamma_eigen, temporary, result);
   eigen_time = prof.toc("EIGEN");
+  std::cout << eigen_time << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -180,10 +184,10 @@ int main(int argc, char* argv[]) {
     RUNS = atoi(argv[2]);
   }
 
-  readSPMAT("D_T_"+std::string(argv[1])+".dat", D_T_blaze);
-  readSPMAT("M_invD_"+std::string(argv[1])+".dat", M_invD_blaze);
-  readVector("gamma_"+std::string(argv[1])+".dat", gamma_blaze);
-  readVector("b_"+std::string(argv[1])+".dat", rhs_blaze);
+  readSPMAT("D_T_" + std::string(argv[1]) + ".dat", D_T_blaze);
+  readSPMAT("M_invD_" + std::string(argv[1]) + ".dat", M_invD_blaze);
+  readVector("gamma_" + std::string(argv[1]) + ".dat", gamma_blaze);
+  readVector("b_" + std::string(argv[1]) + ".dat", rhs_blaze);
 
   num_rows = D_T_blaze.rows();
   num_cols = D_T_blaze.columns();
@@ -206,10 +210,10 @@ int main(int argc, char* argv[]) {
   double vex_single = vexcl_time / RUNS;
   double eig_single = eigen_time / RUNS;
   double GFLOP = 1000000000;
-  printf("Blaze %f sec. Eigen %f sec. OCL %f sec.\n", blaze_single, eig_single, vex_single);
+  printf("Blaze %f sec. Eigen %f sec. VexCL %f sec.\n", blaze_single, eig_single, vex_single);
   printf("Speedup: Blaze vs Eigen %f\n", blaze_single / eig_single);
-  printf("Speedup: Blaze vs OCL %f\n", blaze_single / vex_single);
-  printf("Speedup: Eigen vs OCL %f\n", eig_single / vex_single);
+  printf("Speedup: Blaze vs VexCL %f\n", blaze_single / vex_single);
+  printf("Speedup: Eigen vs VexCL %f\n", eig_single / vex_single);
 
   printf("Flops: Blaze: %f Eigen %f VexCL: %f\n", operations / blaze_single / GFLOP, operations / eig_single / GFLOP, operations / vex_single / GFLOP);
   printf("Bandwidth: Blaze: %f Eigen %f VexCL: %f\n", moved / blaze_single / GFLOP, moved / eig_single / GFLOP, moved / vex_single / GFLOP);

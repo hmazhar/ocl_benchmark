@@ -17,7 +17,12 @@
 #include <string>
 #include <iostream>
 
-void ConvertSpMat(std::vector<size_t>& row, std::vector<size_t>& col, std::vector<double>& val, blaze::CompressedMatrix<double>& mat) {
+/// Function takes a compressed blaze matrix and then generates a CSR representation from it, this is used for VexCL
+void ConvertSparse(blaze::CompressedMatrix<double>& mat,    // Input: The matrix to be converted
+                   std::vector<size_t>& row,    // Output: Row entries for matrix
+                   std::vector<size_t>& col,    // Output: Column entries for matrix
+                   std::vector<double>& val    // Output: Values for the non zero entries
+                   ) {
   row.clear();
   col.clear();
   val.clear();
@@ -33,10 +38,12 @@ void ConvertSpMat(std::vector<size_t>& row, std::vector<size_t>& col, std::vecto
   row.push_back(count);
 }
 
-void ConvertSpMat(std::vector<Eigen::Triplet<double> >& triplet, blaze::CompressedMatrix<double>& mat) {
+/// Function takes a compressed blaze matrix and then generates a CSR representation from it, this is used for VexCL
+void ConvertSparse(blaze::CompressedMatrix<double>& mat,    // Input: The matrix to be converted
+                   std::vector<Eigen::Triplet<double> >& triplet    // Output: Triplet of i,j, val entries for each non zero entry
+                   ) {
   triplet.clear();
   triplet.reserve(mat.nonZeros());
-
   for (int i = 0; i < mat.rows(); ++i) {
     for (blaze::CompressedMatrix<double>::Iterator it = mat.begin(i); it != mat.end(i); ++it) {
       triplet.push_back(Eigen::Triplet<double>(i, it->index(), it->value()));
@@ -44,14 +51,16 @@ void ConvertSpMat(std::vector<Eigen::Triplet<double> >& triplet, blaze::Compress
   }
 }
 
-std::string slurp(std::string fname) {
+/// Take a file and read its contents into a string
+std::string ReadFileAsString(std::string fname) {
   std::ifstream file(fname.c_str());
   std::string buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
   return buffer;
 }
 
-void readSPMAT(const std::string filename, blaze::CompressedMatrix<double>& mat) {
-  std::stringstream ss(slurp(filename));
+/// Read matrix from a file and create a blaze matrix from it
+void FillSparseMatrix(const std::string filename, blaze::CompressedMatrix<double>& mat) {
+  std::stringstream ss(ReadFileAsString(filename));
 
   uint rows, cols, nonzeros;
   uint row_nonzeros, colval;
@@ -69,8 +78,10 @@ void readSPMAT(const std::string filename, blaze::CompressedMatrix<double>& mat)
     mat.finalize(i);
   }
 }
-void readVector(const std::string filename, blaze::DynamicVector<double>& vec) {
-  std::stringstream ss(slurp(filename));
+/// Read vector from a file and create a blaze vector from it
+
+void FillVector(const std::string filename, blaze::DynamicVector<double>& vec) {
+  std::stringstream ss(ReadFileAsString(filename));
 
   uint size;
   ss >> size;
@@ -113,20 +124,21 @@ void Blaze_TEST() {
   TEST(D_T_blaze, M_invD_blaze, gamma_blaze, temporary, result);
   blaze_time = prof.toc("Blaze");
 
-  std::cout << blaze_time << std::endl;
+  // std::cout << blaze_time << std::endl;
 }
 
 void VexCL_TEST() {
 
   vex::Context ctx(vex::Filter::Env && vex::Filter::DoublePrecision);
+  std::cout << ctx << std::endl;
 
   std::vector<size_t> row, col;
   std::vector<double> val;
 
-  ConvertSpMat(row, col, val, D_T_blaze);
+  ConvertSparse(D_T_blaze, row, col, val);
   vex::SpMat<double> D_T_vex(ctx, num_rows, num_cols, row.data(), col.data(), val.data());
 
-  ConvertSpMat(row, col, val, M_invD_blaze);
+  ConvertSparse(M_invD_blaze, row, col, val);
   vex::SpMat<double> M_invD_vex(ctx, num_rows, num_cols, row.data(), col.data(), val.data());
 
   std::vector<double> gamma_temp(num_rows);
@@ -149,7 +161,7 @@ void VexCL_TEST() {
   TEST(D_T_vex, M_invD_vex, gamma_vex, temporary, result);
   ctx.finish();
   vexcl_time = prof.toc("VexCL");
-  std::cout << vexcl_time << std::endl;
+  // std::cout << vexcl_time << std::endl;
 }
 
 void Eigen_TEST() {
@@ -157,12 +169,12 @@ void Eigen_TEST() {
   Eigen::SparseMatrix<double> M_invD_eigen(num_cols, num_rows);
   Eigen::SparseMatrix<double> D_T_eigen(num_rows, num_cols);
 
-    std::vector<Eigen::Triplet<double> > triplet;
-    ConvertSpMat(triplet, D_T_blaze);
-    D_T_eigen.setFromTriplets(triplet.begin(), triplet.end());
+  std::vector<Eigen::Triplet<double> > triplet;
+  ConvertSparse(D_T_blaze, triplet);
+  D_T_eigen.setFromTriplets(triplet.begin(), triplet.end());
 
-    ConvertSpMat(triplet, M_invD_blaze);
-    M_invD_eigen.setFromTriplets(triplet.begin(), triplet.end());
+  ConvertSparse(M_invD_blaze, triplet);
+  M_invD_eigen.setFromTriplets(triplet.begin(), triplet.end());
 
   Eigen::VectorXd gamma_eigen(num_rows);
   Eigen::VectorXd temporary(num_rows);
@@ -171,12 +183,10 @@ void Eigen_TEST() {
   for (int i = 0; i < num_rows; i++) {
     gamma_eigen[i] = gamma_blaze[i];
   }
-  printf("start eigen\n");
-
   prof.tic_cpu("EIGEN");
   TEST(D_T_eigen, M_invD_eigen, gamma_eigen, temporary, result);
   eigen_time = prof.toc("EIGEN");
-  std::cout << eigen_time << std::endl;
+  // std::cout << eigen_time << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -184,10 +194,10 @@ int main(int argc, char* argv[]) {
     RUNS = atoi(argv[2]);
   }
 
-  readSPMAT("D_T_" + std::string(argv[1]) + ".dat", D_T_blaze);
-  readSPMAT("M_invD_" + std::string(argv[1]) + ".dat", M_invD_blaze);
-  readVector("gamma_" + std::string(argv[1]) + ".dat", gamma_blaze);
-  readVector("b_" + std::string(argv[1]) + ".dat", rhs_blaze);
+  FillSparseMatrix("D_T_" + std::string(argv[1]) + ".dat", D_T_blaze);
+  FillSparseMatrix("M_invD_" + std::string(argv[1]) + ".dat", M_invD_blaze);
+  FillVector("gamma_" + std::string(argv[1]) + ".dat", gamma_blaze);
+  FillVector("b_" + std::string(argv[1]) + ".dat", rhs_blaze);
 
   num_rows = D_T_blaze.rows();
   num_cols = D_T_blaze.columns();
@@ -215,8 +225,8 @@ int main(int argc, char* argv[]) {
   printf("Speedup: Blaze vs VexCL %f\n", blaze_single / vex_single);
   printf("Speedup: Eigen vs VexCL %f\n", eig_single / vex_single);
 
-  printf("Flops: Blaze: %f Eigen %f VexCL: %f\n", operations / blaze_single / GFLOP, operations / eig_single / GFLOP, operations / vex_single / GFLOP);
-  printf("Bandwidth: Blaze: %f Eigen %f VexCL: %f\n", moved / blaze_single / GFLOP, moved / eig_single / GFLOP, moved / vex_single / GFLOP);
+  printf("Flops: Blaze %f Eigen %f VexCL %f\n", operations / blaze_single / GFLOP, operations / eig_single / GFLOP, operations / vex_single / GFLOP);
+  printf("Bandwidth: Blaze %f Eigen %f VexCL %f\n", moved / blaze_single / GFLOP, moved / eig_single / GFLOP, moved / vex_single / GFLOP);
 
   return 0;
 }

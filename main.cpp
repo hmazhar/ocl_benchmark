@@ -34,7 +34,7 @@ void Blaze_TEST() {
 void VexCL_TEST() {
 
   vex::Context ctx(vex::Filter::Env && vex::Filter::DoublePrecision);
-  std::cout << ctx << std::endl;
+  std::cout << ctx;
 
   std::vector<size_t> row, col;
   std::vector<double> val;

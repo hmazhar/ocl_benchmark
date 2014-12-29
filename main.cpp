@@ -13,7 +13,7 @@ vex::profiler<> prof;
 double blaze_time;
 double eigen_time;
 double vexcl_time;
-
+double GFLOP = 1000000000;
 template <typename Matrix, typename Vector>
 void TEST(Matrix& D_T, Matrix& M_invD, Vector& gamma, Vector& temporary, Vector& result) {
   for (size_t i = 0; i < RUNS; i++) {
@@ -29,6 +29,7 @@ void Blaze_TEST() {
   prof.tic_cpu("Blaze");
   TEST(D_T_blaze, M_invD_blaze, gamma_blaze, temporary, result);
   blaze_time = prof.toc("Blaze");
+  std::cout << blaze_time << std::endl;
 }
 
 void VexCL_TEST() {
@@ -58,15 +59,13 @@ void VexCL_TEST() {
 
 
   temporary = M_invD_vex * gamma_vex;
-  temporary = 0;
   result = D_T_vex * temporary;
-  result = 0;
 
   prof.tic_cpu("VexCL");
   TEST(D_T_vex, M_invD_vex, gamma_vex, temporary, result);
   ctx.finish();
   vexcl_time = prof.toc("VexCL");
-  // std::cout << vexcl_time << std::endl;
+   std::cout << vexcl_time << std::endl;
 }
 //
 // void Eigen_TEST() {
@@ -112,16 +111,17 @@ int main(int argc, char* argv[]) {
   num_rows = D_T_blaze.rows();
   num_cols = D_T_blaze.columns();
   num_nonzeros = D_T_blaze.nonZeros();
-  printf("D_T: rows:, columns:, non zeros:,M_invD: rows:, columns:, non zeros:, gamma: size:, b: size: \n");
-  printf("%d, %d, %d, %d, %d, %d, %d, %d \n",
-         D_T_blaze.rows(),
-         D_T_blaze.columns(),
-         D_T_blaze.nonZeros(),
+  printf("D_T: rows:, columns:, non zeros:,M_invD: rows:, columns:, non zeros:, gamma: size:, b: size: Memory\n");
+  printf("%d, %d, %d, %d, %d, %d, %d, %d %f\n",
+		  num_rows,
+		  num_cols,
+		  num_nonzeros,
          M_invD_blaze.rows(),
          M_invD_blaze.columns(),
          M_invD_blaze.nonZeros(),
          gamma_blaze.size(),
-         rhs_blaze.size());
+         rhs_blaze.size(),
+		 ((num_nonzeros + M_invD_blaze.nonZeros() + gamma_blaze.size() + rhs_blaze.size()) * sizeof(double))/GFLOP );
   //  printf("D_T: rows: %d, columns: %d, non zeros: %d\n", D_T_blaze.rows(), D_T_blaze.columns(), D_T_blaze.nonZeros());
   //  printf("M_invD: rows: %d, columns: %d, non zeros: %d\n", M_invD_blaze.rows(), M_invD_blaze.columns(), M_invD_blaze.nonZeros());
   //  printf("gamma: size: %d\n", gamma_blaze.size());
@@ -138,7 +138,6 @@ int main(int argc, char* argv[]) {
   double blaze_single = blaze_time / RUNS;
   double vex_single = vexcl_time / RUNS;
   double eig_single = eigen_time / RUNS;
-  double GFLOP = 1000000000;
 
   printf("Blaze sec, VexCL sec, Speedup, Blaze Flops, VexCL Flops, Bandwidth Blaze, Bandwidth VexCL \n");
   printf("%f, %f, %f, %f, %f, %f, %f\n",

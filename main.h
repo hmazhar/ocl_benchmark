@@ -10,7 +10,7 @@
 #include <blaze/math/serialization/MatrixSerializer.h>
 #include <blaze/math/serialization/VectorSerializer.h>
 
-#include <Eigen/Sparse>
+//#include <Eigen/Sparse>
 
 #include <vector>
 #include <sstream>
@@ -18,9 +18,10 @@
 #include <iostream>
 
 /// Function takes a compressed blaze matrix and then generates a CSR representation from it, this is used for VexCL
+template<typename T>
 void ConvertSparse(blaze::CompressedMatrix<double>& mat,    // Input: The matrix to be converted
-                   std::vector<size_t>& row,    // Output: Row entries for matrix
-                   std::vector<size_t>& col,    // Output: Column entries for matrix
+                   std::vector<T>& row,    // Output: Row entries for matrix
+                   std::vector<T>& col,    // Output: Column entries for matrix
                    std::vector<double>& val    // Output: Values for the non zero entries
                    ) {
   row.clear();
@@ -38,18 +39,18 @@ void ConvertSparse(blaze::CompressedMatrix<double>& mat,    // Input: The matrix
   row.push_back(count);
 }
 
-/// Function takes a compressed blaze matrix and then generates a CSR representation from it, this is used for VexCL
-void ConvertSparse(blaze::CompressedMatrix<double>& mat,    // Input: The matrix to be converted
-                   std::vector<Eigen::Triplet<double> >& triplet    // Output: Triplet of i,j, val entries for each non zero entry
-                   ) {
-  triplet.clear();
-  triplet.reserve(mat.nonZeros());
-  for (int i = 0; i < mat.rows(); ++i) {
-    for (blaze::CompressedMatrix<double>::Iterator it = mat.begin(i); it != mat.end(i); ++it) {
-      triplet.push_back(Eigen::Triplet<double>(i, it->index(), it->value()));
-    }
-  }
-}
+/// Function takes a compressed blaze matrix and then generates a CSR representation from it, this is used for Eigen
+//void ConvertSparse(blaze::CompressedMatrix<double>& mat,    // Input: The matrix to be converted
+//                   std::vector<Eigen::Triplet<double> >& triplet    // Output: Triplet of i,j, val entries for each non zero entry
+//                   ) {
+//  triplet.clear();
+//  triplet.reserve(mat.nonZeros());
+//  for (int i = 0; i < mat.rows(); ++i) {
+//    for (blaze::CompressedMatrix<double>::Iterator it = mat.begin(i); it != mat.end(i); ++it) {
+//      triplet.push_back(Eigen::Triplet<double>(i, it->index(), it->value()));
+//    }
+//  }
+//}
 
 /// Take a file and read its contents into a string
 std::string ReadFileAsString(std::string fname) {

@@ -1,9 +1,5 @@
 #include "main.h"
 
-
-
-
-
 blaze::CompressedMatrix<double> D_T_blaze, M_invD_blaze;
 blaze::DynamicVector<double> gamma_blaze, rhs_blaze;
 
@@ -33,8 +29,6 @@ void Blaze_TEST() {
   prof.tic_cpu("Blaze");
   TEST(D_T_blaze, M_invD_blaze, gamma_blaze, temporary, result);
   blaze_time = prof.toc("Blaze");
-
-  // std::cout << blaze_time << std::endl;
 }
 
 void VexCL_TEST() {
@@ -73,31 +67,36 @@ void VexCL_TEST() {
   vexcl_time = prof.toc("VexCL");
   // std::cout << vexcl_time << std::endl;
 }
-
-void Eigen_TEST() {
-
-  Eigen::SparseMatrix<double> M_invD_eigen(num_cols, num_rows);
-  Eigen::SparseMatrix<double> D_T_eigen(num_rows, num_cols);
-
-  std::vector<Eigen::Triplet<double> > triplet;
-  ConvertSparse(D_T_blaze, triplet);
-  D_T_eigen.setFromTriplets(triplet.begin(), triplet.end());
-
-  ConvertSparse(M_invD_blaze, triplet);
-  M_invD_eigen.setFromTriplets(triplet.begin(), triplet.end());
-
-  Eigen::VectorXd gamma_eigen(num_rows);
-  Eigen::VectorXd temporary(num_rows);
-  Eigen::VectorXd result(num_rows);
-
-  for (int i = 0; i < num_rows; i++) {
-    gamma_eigen[i] = gamma_blaze[i];
-  }
-  prof.tic_cpu("EIGEN");
-  TEST(D_T_eigen, M_invD_eigen, gamma_eigen, temporary, result);
-  eigen_time = prof.toc("EIGEN");
-  // std::cout << eigen_time << std::endl;
-}
+//
+//void Eigen_TEST() {
+//
+//  Eigen::SparseMatrix<double> M_invD_eigen(num_cols, num_rows);
+//  Eigen::SparseMatrix<double> D_T_eigen(num_rows, num_cols);
+//
+//  std::vector<Eigen::Triplet<double> > triplet;
+//  ConvertSparse(D_T_blaze, triplet);
+//  D_T_eigen.setFromTriplets(triplet.begin(), triplet.end());
+//
+//  ConvertSparse(M_invD_blaze, triplet);
+//  M_invD_eigen.setFromTriplets(triplet.begin(), triplet.end());
+//
+//  Eigen::AMDOrdering<int> ordering;
+//  Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> perm;
+//
+//  ordering(D_T_eigen, perm);
+//  ordering(M_invD_eigen, perm);
+//
+//  Eigen::VectorXd gamma_eigen(num_rows);
+//  Eigen::VectorXd temporary(num_rows);
+//  Eigen::VectorXd result(num_rows);
+//
+//  for (int i = 0; i < num_rows; i++) {
+//    gamma_eigen[i] = gamma_blaze[i];
+//  }
+//  prof.tic_cpu("EIGEN");
+//  TEST(D_T_eigen, M_invD_eigen, gamma_eigen, temporary, result);
+//  eigen_time = prof.toc("EIGEN");
+//}
 
 int main(int argc, char* argv[]) {
   if (argc > 2) {
@@ -119,7 +118,7 @@ int main(int argc, char* argv[]) {
   printf("b: size: %d\n", rhs_blaze.size());
 
   Blaze_TEST();
-  Eigen_TEST();
+  //Eigen_TEST();
   VexCL_TEST();
 
   // Two Spmv each with 2*nnz operations

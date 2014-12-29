@@ -18,7 +18,7 @@ template <typename Matrix, typename Vector>
 void TEST(Matrix& D_T, Matrix& M_invD, Vector& gamma, Vector& temporary, Vector& result) {
   for (size_t i = 0; i < RUNS; i++) {
     temporary = M_invD * gamma;
-    result += D_T * temporary;
+    result = D_T * temporary;
   }
 }
 
@@ -52,13 +52,14 @@ void VexCL_TEST() {
   }
 
   vex::vector<double> gamma_vex(ctx, num_rows);
-  vex::copy(gamma_temp, gamma_vex);
   vex::vector<double> temporary(ctx, num_rows);
   vex::vector<double> result(ctx, num_rows);
+  vex::copy(gamma_temp, gamma_vex);
 
-  temporary += M_invD_vex * gamma_vex;
+
+  temporary = M_invD_vex * gamma_vex;
   temporary = 0;
-  result += D_T_vex * temporary;
+  result = D_T_vex * temporary;
   result = 0;
 
   prof.tic_cpu("VexCL");

@@ -68,7 +68,7 @@ void VexCL_TEST() {
   // std::cout << vexcl_time << std::endl;
 }
 //
-//void Eigen_TEST() {
+// void Eigen_TEST() {
 //
 //  Eigen::SparseMatrix<double> M_invD_eigen(num_cols, num_rows);
 //  Eigen::SparseMatrix<double> D_T_eigen(num_rows, num_cols);
@@ -111,14 +111,23 @@ int main(int argc, char* argv[]) {
   num_rows = D_T_blaze.rows();
   num_cols = D_T_blaze.columns();
   num_nonzeros = D_T_blaze.nonZeros();
-
-  printf("D_T: rows: %d, columns: %d, non zeros: %d\n", D_T_blaze.rows(), D_T_blaze.columns(), D_T_blaze.nonZeros());
-  printf("M_invD: rows: %d, columns: %d, non zeros: %d\n", M_invD_blaze.rows(), M_invD_blaze.columns(), M_invD_blaze.nonZeros());
-  printf("gamma: size: %d\n", gamma_blaze.size());
-  printf("b: size: %d\n", rhs_blaze.size());
+  printf("D_T: rows:, columns:, non zeros:,M_invD: rows:, columns:, non zeros:, gamma: size:, b: size: \n");
+  printf("%d, %d, %d, %d, %d, %d, %d, %d \n",
+         D_T_blaze.rows(),
+         D_T_blaze.columns(),
+         D_T_blaze.nonZeros(),
+         M_invD_blaze.rows(),
+         M_invD_blaze.columns(),
+         M_invD_blaze.nonZeros(),
+         gamma_blaze.size(),
+         rhs_blaze.size());
+  //  printf("D_T: rows: %d, columns: %d, non zeros: %d\n", D_T_blaze.rows(), D_T_blaze.columns(), D_T_blaze.nonZeros());
+  //  printf("M_invD: rows: %d, columns: %d, non zeros: %d\n", M_invD_blaze.rows(), M_invD_blaze.columns(), M_invD_blaze.nonZeros());
+  //  printf("gamma: size: %d\n", gamma_blaze.size());
+  //  printf("b: size: %d\n", rhs_blaze.size());
 
   Blaze_TEST();
-  //Eigen_TEST();
+  // Eigen_TEST();
   VexCL_TEST();
 
   // Two Spmv each with 2*nnz operations
@@ -129,13 +138,24 @@ int main(int argc, char* argv[]) {
   double vex_single = vexcl_time / RUNS;
   double eig_single = eigen_time / RUNS;
   double GFLOP = 1000000000;
-  printf("Blaze %f sec. Eigen %f sec. VexCL %f sec.\n", blaze_single, eig_single, vex_single);
-  printf("Speedup: Blaze vs Eigen %f\n", blaze_single / eig_single);
-  printf("Speedup: Blaze vs VexCL %f\n", blaze_single / vex_single);
-  printf("Speedup: Eigen vs VexCL %f\n", eig_single / vex_single);
 
-  printf("Flops: Blaze %f Eigen %f VexCL %f\n", operations / blaze_single / GFLOP, operations / eig_single / GFLOP, operations / vex_single / GFLOP);
-  printf("Bandwidth: Blaze %f Eigen %f VexCL %f\n", moved / blaze_single / GFLOP, moved / eig_single / GFLOP, moved / vex_single / GFLOP);
+  printf("Blaze sec, VexCL sec, Speedup, Blaze Flops, VexCL Flops, Bandwidth Blaze, Bandwidth VexCL \n");
+  printf("%f, %f, %f, %f, %f, %f, %f\n",
+         blaze_single,
+         vex_single,
+         blaze_single / vex_single,
+         operations / blaze_single / GFLOP,
+         operations / vex_single / GFLOP,
+         moved / blaze_single / GFLOP,
+         moved / vex_single / GFLOP);
+
+  //  printf("Blaze %f sec. Eigen %f sec. VexCL %f sec.\n", blaze_single, eig_single, vex_single);
+  //  printf("Speedup: Blaze vs Eigen %f\n", blaze_single / eig_single);
+  //  printf("Speedup: Blaze vs VexCL %f\n", blaze_single / vex_single);
+  //  printf("Speedup: Eigen vs VexCL %f\n", eig_single / vex_single);
+  //
+  //  printf("Flops: Blaze %f Eigen %f VexCL %f\n", operations / blaze_single / GFLOP, operations / eig_single / GFLOP, operations / vex_single / GFLOP);
+  //  printf("Bandwidth: Blaze %f Eigen %f VexCL %f\n", moved / blaze_single / GFLOP, moved / eig_single / GFLOP, moved / vex_single / GFLOP);
 
   return 0;
 }
